@@ -5,35 +5,10 @@ import time
 from os import listdir
 from picographics import PicoGraphics, DISPLAY_TUFTY_2040, PEN_RGB332
 from pimoroni import Button
+import shared
 
-scripts_dir = "/scripts"
+scripts_dir = "scripts"
 
-
-def hsv_to_rgb(h: float, s: float, v: float) -> tuple[float, float, float]:
-    if s == 0.0:
-        return v, v, v
-    i = int(h * 6.0)
-    f = (h * 6.0) - i
-    p = v * (1.0 - s)
-    q = v * (1.0 - s * f)
-    t = v * (1.0 - s * (1.0 - f))
-    v = int(v * 255)
-    t = int(t * 255)
-    p = int(p * 255)
-    q = int(q * 255)
-    i = i % 6
-    if i == 0:
-        return v, t, p
-    if i == 1:
-        return q, v, p
-    if i == 2:
-        return p, v, t
-    if i == 3:
-        return p, q, v
-    if i == 4:
-        return t, p, v
-    if i == 5:
-        return v, p, q
 
 
 def get_applications() -> list[dict[str, str]]:
@@ -112,7 +87,7 @@ def menu() -> str:
             for x in range(0, 320 // grid_size):
                 h = x + y + int(t * 5)
                 h = h / 50.0
-                r, g, b = hsv_to_rgb(h, 0.5, 1)
+                r, g, b = shared.hsv_to_rgb(h, 0.5, 1)
 
                 display.set_pen(display.create_pen(r, g, b))
                 display.rectangle(x * grid_size, y * grid_size, grid_size, grid_size)
