@@ -20,7 +20,7 @@ while True:
     if last_run_time <= time.time() - time_delay:
         last_run_time = time.time()
         j.open_file(images[current_image_index]["file"])
-        j.decode()
+        j.decode(dither=False)
         display.update()
         current_image_index += 1
         if current_image_index == len(images):

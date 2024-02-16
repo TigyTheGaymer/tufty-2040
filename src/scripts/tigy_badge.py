@@ -60,7 +60,7 @@ def show_photo(image):
     text_height = NAME_TEXT_SIZE * 5 + 15
     image_draw_pos_x = BORDER_SIZE
     image_draw_pos_y = BORDER_SIZE + PADDING + text_height + PADDING
-    j.decode(image_draw_pos_x, image_draw_pos_y)
+    j.decode(image_draw_pos_x, image_draw_pos_y, dither=False)
 
 
 def measure_qr_code(size, code):
