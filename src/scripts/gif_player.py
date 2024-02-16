@@ -1,18 +1,18 @@
 from picographics import PicoGraphics, DISPLAY_TUFTY_2040, PEN_RGB332
-from jpegdec import JPEG
+import jpegdec
 from os import listdir
 import time
 from pimoroni import Button
 import shared
 
-# display = PicoGraphics(display=DISPLAY_TUFTY_2040)
 display = PicoGraphics(display=DISPLAY_TUFTY_2040, pen_type=PEN_RGB332)
 display.set_backlight(1.0)
-j = JPEG(display)
+j = jpegdec.JPEG(display)
 gifs_dir = "/gifs"
 time_delay = 0.2
 last_run_time = time.time()
 current_image_index = 0
+WIDTH, HEIGHT = display.get_bounds()
 
 button_up = Button(22, invert=False)
 button_down = Button(6, invert=False)
@@ -27,6 +27,13 @@ selected_pen = display.create_pen(255, 255, 255)
 unselected_pen = display.create_pen(80, 80, 100)
 background_pen = display.create_pen(50, 50, 70)
 shadow_pen = display.create_pen(0, 0, 0)
+
+BACKGROUND_PEN = display.create_pen(82, 119, 70)
+
+
+def draw_background():
+    display.set_pen(BACKGROUND_PEN)
+    display.rectangle(0, 0, WIDTH, HEIGHT)
 
 
 def get_gif_folders() -> list[dict[str, str]]:
@@ -52,14 +59,26 @@ while True:
 
     if selected_gif_dir != "":
         if last_run_time <= time.time() - time_delay:
+            draw_background()
             last_run_time = time.time()
             j.open_file(selected_gif_images[current_image_index]["file"])
-            j.decode()
+
+            # full width but not full height
+            if selected_gif_dir == "/gifs/3":
+                image_pos_x = 0
+                image_pos_y = 0  # TODO center in y
+
+            # full height but not full width
+            else:
+                image_pos_x = (WIDTH - HEIGHT) // 2  # center image
+                image_pos_y = 0
+
+            j.decode(image_pos_x, 0, dither=False)
             display.update()
             current_image_index += 1
             if current_image_index == len(selected_gif_images):
                 current_image_index = 0
-                
+
         if button_c.read():
             # Wait for the button to be released.
             while button_a.is_pressed:
