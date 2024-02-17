@@ -1,14 +1,14 @@
 # A retro badge with photo and QR code.
 # Copy your image to your Tufty alongside this example - it should be a 120 x 120 jpg.
 
-from picographics import PicoGraphics, DISPLAY_TUFTY_2040
+from picographics import PicoGraphics, DISPLAY_TUFTY_2040, PEN_RGB332
 from pimoroni import Button
 import time
 import jpegdec
 import qrcode
 import shared
 
-display = PicoGraphics(display=DISPLAY_TUFTY_2040)
+display = PicoGraphics(display=DISPLAY_TUFTY_2040, pen_type=PEN_RGB332)
 button_a = Button(7, invert=False)
 button_b = Button(8, invert=False)
 button_c = Button(9, invert=False)
@@ -22,9 +22,8 @@ DARKEST = display.create_pen(64, 80, 16)
 # Change your badge and QR details here!
 NAME = "Tigy"
 QR_TEXT = "https://twitter.com/TigyTheGaymer"
-IMAGE_NAME = "/badge_images/badge_0.jpg"
 IMAGES_DIR = "/badge_images"
-TIME_DELAY = 2
+TIME_DELAY = 10
 
 # Some constants we'll use for drawing
 BORDER_SIZE = 4
@@ -32,11 +31,43 @@ PADDING = 10
 NAME_TEXT_SIZE = 6
 
 
-def draw_badge():
-    # draw border
-    display.set_pen(LIGHTEST)
-    display.clear()
+class ColorCycle:
+    def __init__(self, steps_per_color):
+        self.steps_per_color = steps_per_color
+        self.color_generator = self.smooth_color_cycle()
 
+    def smooth_color_cycle(self):
+        colors = [
+            (255, 0, 0),  # Red
+            (255, 128, 0),  # Orange
+            (255, 255, 0),  # Yellow
+            (128, 255, 0),  # Lime
+            (0, 255, 0),  # Green
+            (0, 255, 128),  # Aqua
+            (0, 255, 255),  # Cyan
+            (0, 128, 255),  # Sky Blue
+            (0, 0, 255),  # Blue
+            (127, 0, 255),  # Indigo
+            (255, 0, 255)  # Magenta
+        ]
+
+        while True:
+            for i in range(len(colors) - 1):
+                for step in range(self.steps_per_color):
+                    # Interpolate between the two colors
+                    color = tuple(
+                        int(colors[i][j] + (colors[i + 1][j] - colors[i][j]) * step / self.steps_per_color) for j in
+                        range(3))
+                    yield color
+
+    def next_color(self):
+        return display.create_pen(*next(self.color_generator))
+
+
+color_cycle = ColorCycle(30)
+
+
+def draw_badge():
     # draw background
     display.set_pen(DARK)
     display.rectangle(BORDER_SIZE, BORDER_SIZE, WIDTH - (BORDER_SIZE * 2), HEIGHT - (BORDER_SIZE * 2))
@@ -48,6 +79,15 @@ def draw_badge():
     text_draw_pos_x = int(160 - title_width / 2)  # center
     text_draw_pos_y = BORDER_SIZE + PADDING
     display.text(NAME, text_draw_pos_x, text_draw_pos_y, WIDTH, NAME_TEXT_SIZE)
+
+
+def draw_badge_border():
+    # draw border
+    display.set_pen(color_cycle.next_color())
+    display.line(0, 0, WIDTH, 0, 10)
+    display.line(WIDTH, 0, WIDTH, HEIGHT, 10)
+    display.line(WIDTH, HEIGHT, 0, HEIGHT, 10)
+    display.line(0, HEIGHT, 0, 0, 10)
 
 
 def show_photo(image):
@@ -95,11 +135,16 @@ def show_qr():
 
 badge_mode = "photo"
 last_run_time = time.time()
+last_run_time_border = time.time()
 current_image_index = 0
 images = shared.get_images(IMAGES_DIR)
 
 # draw the badge for the first time
 draw_badge()
+draw_badge_border()
+show_photo(images[current_image_index]["file"])
+current_image_index += 1
+display.update()
 
 while True:
 
@@ -118,5 +163,8 @@ while True:
             current_image_index += 1
             if current_image_index == len(images):
                 current_image_index = 0
+        if last_run_time_border <= time.time() - 0.2:
+            last_run_time_border = time.time()
+            draw_badge_border()
 
     display.update()
