@@ -139,22 +139,30 @@ last_run_time_border = time.time()
 current_image_index = 0
 images = shared.get_images(IMAGES_DIR)
 
+
 # draw the badge for the first time
-draw_badge()
-draw_badge_border()
-show_photo(images[current_image_index]["file"])
-current_image_index += 1
-display.update()
+def init_badge():
+    draw_badge()
+    draw_badge_border()
+    show_photo(images[current_image_index]["file"])
+    display.update()
+
+
+init_badge()
 
 while True:
 
-    if button_b.is_pressed:
+    if button_b.read():
+        # Wait for the button to be released.
+        while button_b.is_pressed:
+            time.sleep(0.01)
+
         if badge_mode == "photo":
             badge_mode = "qr"
             show_qr()
         else:
             badge_mode = "photo"
-            draw_badge()
+            init_badge()
 
     if badge_mode == "photo":
         if last_run_time <= time.time() - TIME_DELAY:
