@@ -64,7 +64,7 @@ while True:
             j.open_file(selected_gif_images[current_image_index]["file"])
 
             # full width but not full height
-            if selected_gif_dir == "/gifs/3":
+            if selected_gif_dir == "/gifs/andy":
                 image_pos_x = 0
                 image_pos_y = 0  # TODO center in y
 
