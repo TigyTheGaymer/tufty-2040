@@ -9,7 +9,7 @@ display = PicoGraphics(display=DISPLAY_TUFTY_2040, pen_type=PEN_RGB332)
 display.set_backlight(1.0)
 j = jpegdec.JPEG(display)
 gifs_dir = "/gifs"
-time_delay = 0.2
+time_delay = 0.1
 last_run_time = time.time()
 current_image_index = 0
 WIDTH, HEIGHT = display.get_bounds()
@@ -68,6 +68,11 @@ while True:
                 image_pos_x = 0
                 image_pos_y = 0  # TODO center in y
 
+            # full width but not full height
+            if selected_gif_dir == "/gifs/tigy_andy_kissing":
+                image_pos_x = 0
+                image_pos_y = 0  # TODO center in y
+
             # full height but not full width
             else:
                 image_pos_x = (WIDTH - HEIGHT) // 2  # center image
@@ -81,7 +86,7 @@ while True:
 
         if button_c.read():
             # Wait for the button to be released.
-            while button_a.is_pressed:
+            while button_c.is_pressed:
                 time.sleep(0.01)
             selected_gif_dir = ""
             selected_gif_images = []
@@ -105,7 +110,6 @@ while True:
             selected_gif_images = shared.get_images(selected_gif_dir)
 
         display.set_pen(background_pen)
-        display.clear()
 
         scroll_position += (target_scroll_position - scroll_position) / 5
 
@@ -127,7 +131,7 @@ while True:
 
             text_size = 4 if selected_item == list_index else 3
 
-            # center text horixontally
+            # center text horizontally
             title_width = display.measure_text(application["title"], text_size)
             text_x = int(160 - title_width / 2)
 
