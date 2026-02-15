@@ -10,7 +10,7 @@ display.set_backlight(1.0)
 j = jpegdec.JPEG(display)
 gifs_dir = "/gifs"
 time_delay = 0.1
-last_run_time = time.time()
+last_run_time = time.ticks_ms()
 current_image_index = 0
 WIDTH, HEIGHT = display.get_bounds()
 
@@ -30,6 +30,13 @@ shadow_pen = display.create_pen(0, 0, 0)
 
 BACKGROUND_PEN = display.create_pen(82, 119, 70)
 
+# Precompute a palette for rainbow background
+PALETTE_SIZE = 50
+rainbow_palette = []
+for i in range(PALETTE_SIZE):
+    r, g, b = shared.hsv_to_rgb(i / PALETTE_SIZE, 0.5, 1)
+    rainbow_palette.append(display.create_pen(r, g, b))
+
 
 def draw_background():
     display.set_pen(BACKGROUND_PEN)
@@ -41,12 +48,10 @@ def get_gif_folders() -> list[dict[str, str]]:
     for folder in listdir(gifs_dir):
         folders.append(
             {
-                "dir": gifs_dir + "/" + folder,
+                "dir": f"{gifs_dir}/{folder}",
                 "title": folder
             }
         )
-
-    # sort the application list alphabetically by title and return the list
     return sorted(folders, key=lambda x: x["title"])
 
 
@@ -54,32 +59,42 @@ gif_folders = get_gif_folders()
 selected_gif_dir = ""
 selected_gif_images = []
 
+# Keep track of the last opened GIF file
+last_opened_file = ""
+
+# === FPS tracking variables ===
+frame_count = 0
+fps_time_start = time.ticks_ms()
+
 while True:
-    t = time.ticks_ms() / 1000.0
+    t = time.ticks_ms() / 1000.0  # current time in seconds
 
+    # === GIF playback ===
     if selected_gif_dir != "":
-        if last_run_time <= time.time() - time_delay:
+        if time.ticks_diff(time.ticks_ms(), last_run_time) > time_delay * 1000:
+            last_run_time = time.ticks_ms()
             draw_background()
-            last_run_time = time.time()
-            j.open_file(selected_gif_images[current_image_index]["file"])
 
-            # full width but not full height
-            if selected_gif_dir == "/gifs/andy":
+            current_file = selected_gif_images[current_image_index]["file"]
+
+            # Only open file if it’s a new frame
+            if last_opened_file != current_file:
+                j.open_file(current_file)
+                last_opened_file = current_file
+
+            # Determine image position
+            if selected_gif_dir in ["/gifs/andy", "/gifs/tigy_andy_kissing"]:
                 image_pos_x = 0
-                image_pos_y = 0  # TODO center in y
-
-            # full width but not full height
-            if selected_gif_dir == "/gifs/tigy_andy_kissing":
-                image_pos_x = 0
-                image_pos_y = 0  # TODO center in y
-
-            # full height but not full width
+                image_pos_y = 0
             else:
-                image_pos_x = (WIDTH - HEIGHT) // 2  # center image
+                image_pos_x = (WIDTH - HEIGHT) // 2
                 image_pos_y = 0
 
-            j.decode(image_pos_x, 0, dither=False)
+            # Decode frame
+            j.decode(image_pos_x, image_pos_y, dither=False)
             display.update()
+
+            # Advance frame
             current_image_index += 1
             if current_image_index == len(selected_gif_images):
                 current_image_index = 0
@@ -91,6 +106,7 @@ while True:
             selected_gif_dir = ""
             selected_gif_images = []
 
+    # === Menu / folder selection ===
     if selected_gif_dir == "":
 
         if button_up.read():
@@ -105,48 +121,46 @@ while True:
             # Wait for the button to be released.
             while button_a.is_pressed:
                 time.sleep(0.01)
-
             selected_gif_dir = gif_folders[selected_item]["dir"]
             selected_gif_images = shared.get_images(selected_gif_dir)
 
         display.set_pen(background_pen)
 
+        # smooth scroll
         scroll_position += (target_scroll_position - scroll_position) / 5
 
         grid_size = 40
         for y in range(0, 240 // grid_size):
             for x in range(0, 320 // grid_size):
                 h = x + y + int(t * 5)
-                h = h / 50.0
-                r, g, b = shared.hsv_to_rgb(h, 0.5, 1)
-
-                display.set_pen(display.create_pen(r, g, b))
+                h = int(h % PALETTE_SIZE)
+                display.set_pen(rainbow_palette[h])
                 display.rectangle(x * grid_size, y * grid_size, grid_size, grid_size)
 
-        # work out which item is selected (closest to the current scroll position)
+        # determine selected item
         selected_item = round(target_scroll_position)
 
         for list_index, application in enumerate(gif_folders):
             distance = list_index - scroll_position
-
             text_size = 4 if selected_item == list_index else 3
-
-            # center text horizontally
             title_width = display.measure_text(application["title"], text_size)
             text_x = int(160 - title_width / 2)
-
             row_height = text_size * 5 + 20
-
-            # center list items vertically
             text_y = int(120 + distance * row_height - (row_height / 2))
 
-            # draw the text, selected item brightest and with shadow
             if selected_item == list_index:
                 display.set_pen(shadow_pen)
                 display.text(application["title"], text_x + 1, text_y + 1, -1, text_size)
 
-            text_pen = selected_pen if selected_item == list_index else unselected_pen
-            display.set_pen(text_pen)
+            display.set_pen(selected_pen if selected_item == list_index else unselected_pen)
             display.text(application["title"], text_x, text_y, -1, text_size)
 
         display.update()
+
+    # # === FPS calculation ===
+    # frame_count += 1
+    # if time.ticks_diff(time.ticks_ms(), fps_time_start) >= 1000:
+    #     fps = frame_count
+    #     print("FPS:", fps)
+    #     frame_count = 0
+    #     fps_time_start = time.ticks_ms()
